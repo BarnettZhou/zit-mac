@@ -1,0 +1,78 @@
+# Python 虚拟环境
+.venv/
+venv/
+env/
+ENV/
+
+# Python 缓存文件
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# 模型文件 (大文件，需要单独下载)
+models/*.gguf
+models/*.safetensors
+models/*.sft
+models/*.pt
+models/*.pth
+models/*.ckpt
+models/*.bin
+!models/.gitkeep
+
+# 输出目录
+output/
+Output/
+
+# 生成的图片
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.gif
+
+# stable-diffusion.cpp（需自行下载编译）
+stable-diffusion.cpp/
+*.o
+*.a
+*.dylib
+*.so
+*.dll
+
+# IDE 和编辑器
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# 日志和临时文件
+*.log
+*.tmp
+temp/
+tmp/
+
+# uv 相关
+uv.lock
+
+# 环境变量文件
+.env
+.env.local
+.env.*.local
