@@ -20,7 +20,7 @@
         }
         
         .container {
-            max-width: 900px;
+            max-width: 1400px;
             margin: 0 auto;
         }
         
@@ -32,6 +32,21 @@
             text-shadow: 0 2px 4px rgba(0,0,0,0.3);
         }
         
+        /* 主布局 - PC端两栏 */
+        .main-layout {
+            display: grid;
+            grid-template-columns: 1fr 450px;
+            gap: 24px;
+            align-items: start;
+        }
+        
+        /* 手机端单列布局 */
+        @media (max-width: 900px) {
+            .main-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+        
         .card {
             background: rgba(255, 255, 255, 0.05);
             border-radius: 16px;
@@ -41,8 +56,16 @@
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
         
+        .card:last-child {
+            margin-bottom: 0;
+        }
+        
         .form-group {
             margin-bottom: 20px;
+        }
+        
+        .form-group:last-child {
+            margin-bottom: 0;
         }
         
         label {
@@ -102,8 +125,16 @@
             }
         }
         
+        .section-title {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #667eea;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+        
         .btn-generate {
-            width: 100%;
             padding: 16px 32px;
             font-size: 18px;
             font-weight: 600;
@@ -114,6 +145,7 @@
             cursor: pointer;
             transition: all 0.3s ease;
             box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            width: 100%;
         }
         
         .btn-generate:hover:not(:disabled) {
@@ -127,7 +159,7 @@
         }
         
         .image-container {
-            min-height: 300px;
+            min-height: 450px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -141,6 +173,12 @@
             max-width: 100%;
             max-height: 600px;
             border-radius: 8px;
+        }
+        
+        @media (max-width: 900px) {
+            .image-container {
+                min-height: 300px;
+            }
         }
         
         .image-placeholder {
@@ -215,137 +253,177 @@
         .download-link:hover {
             text-decoration: underline;
         }
-
-        .section-title {
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: #667eea;
-            margin-bottom: 16px;
-            font-weight: 600;
+        
+        /* 右侧栏固定 */
+        .right-column {
+            position: sticky;
+            top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        
+        /* PC端：图片区域显示按钮 */
+        .desktop-generate-btn {
+            display: block;
+        }
+        
+        /* 手机端：底部显示按钮 */
+        .mobile-generate-btn {
+            display: none;
+        }
+        
+        @media (max-width: 900px) {
+            .right-column {
+                position: static;
+                gap: 20px;
+            }
+            
+            /* 手机端隐藏图片下方的按钮 */
+            .desktop-generate-btn {
+                display: none;
+            }
+            
+            /* 手机端显示底部按钮 */
+            .mobile-generate-btn {
+                display: block;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🎨 Z-Image Turbo Web UI</h1>
-        
-        <div class="card">
-            <div class="section-title">Prompt</div>
-            <div class="form-group">
-                <textarea id="prompt" placeholder="输入你的提示词，例如：a beautiful sunset over mountains, highly detailed, 8k..."></textarea>
-            </div>
-        </div>
-        
-        <div class="card">
-            <div class="section-title">Model Settings</div>
-            <div class="form-group">
-                <label for="diffusion_model">Diffusion Model</label>
-                <select id="diffusion_model">
-                    {% for model in diffusion_models %}
-                    <option value="{{ model }}">{{ model }}</option>
-                    {% endfor %}
-                </select>
+        <div class="main-layout">
+            <!-- 左侧栏 -->
+            <div class="left-column">
+                <div class="card">
+                    <div class="section-title">Prompt</div>
+                    <div class="form-group">
+                        <textarea id="prompt" placeholder="输入你的提示词，例如：a beautiful sunset over mountains, highly detailed, 8k..."></textarea>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="section-title">Model Settings</div>
+                    <div class="form-group">
+                        <label for="diffusion_model">Diffusion Model</label>
+                        <select id="diffusion_model">
+                            {% for model in diffusion_models %}
+                            <option value="{{ model }}">{{ model }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="form-group">
+                            <label for="text_encoder">Text Encoder</label>
+                            <select id="text_encoder">
+                                {% for encoder in text_encoders %}
+                                <option value="{{ encoder }}">{{ encoder }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="vae">VAE</label>
+                            <select id="vae">
+                                {% for vae in vaes %}
+                                <option value="{{ vae }}">{{ vae }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="section-title">Sampling Settings</div>
+                    <div class="row">
+                        <div class="form-group">
+                            <label for="sampling_method">Sampling Method</label>
+                            <select id="sampling_method">
+                                {% for method in sampling_methods %}
+                                <option value="{{ method }}" {% if method == 'euler' %}selected{% endif %}>{{ method }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="scheduler">Scheduler</label>
+                            <select id="scheduler">
+                                {% for scheduler in schedulers %}
+                                <option value="{{ scheduler }}" {% if scheduler == 'sgm_uniform' %}selected{% endif %}>{{ scheduler }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="form-group">
+                            <label for="steps">Steps (4-8 recommended)</label>
+                            <input type="number" id="steps" value="4" min="1" max="50">
+                        </div>
+                        <div class="form-group">
+                            <label for="guidance">Guidance (2.5-5.0)</label>
+                            <input type="number" id="guidance" value="3.5" min="1" max="10" step="0.1">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="section-title">Output Settings</div>
+                    <div class="row">
+                        <div class="form-group">
+                            <label for="width">Width</label>
+                            <input type="number" id="width" value="512" min="256" max="2048" step="64">
+                        </div>
+                        <div class="form-group">
+                            <label for="height">Height</label>
+                            <input type="number" id="height" value="512" min="256" max="2048" step="64">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="output_prefix">Output Prefix (支持 %date% 占位符)</label>
+                        <input type="text" id="output_prefix" value="webui" placeholder="输出文件名前缀">
+                    </div>
+                </div>
+                
+                <!-- 手机端生成按钮 -->
+                <button class="btn-generate mobile-generate-btn" id="btn_generate_mobile" onclick="generateImage()">
+                    🚀 Generate Image
+                </button>
             </div>
             
-            <div class="row">
-                <div class="form-group">
-                    <label for="text_encoder">Text Encoder</label>
-                    <select id="text_encoder">
-                        {% for encoder in text_encoders %}
-                        <option value="{{ encoder }}">{{ encoder }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="vae">VAE</label>
-                    <select id="vae">
-                        {% for vae in vaes %}
-                        <option value="{{ vae }}">{{ vae }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-            </div>
-        </div>
-        
-        <div class="card">
-            <div class="section-title">Sampling Settings</div>
-            <div class="row">
-                <div class="form-group">
-                    <label for="sampling_method">Sampling Method</label>
-                    <select id="sampling_method">
-                        {% for method in sampling_methods %}
-                        <option value="{{ method }}" {% if method == 'euler' %}selected{% endif %}>{{ method }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="scheduler">Scheduler</label>
-                    <select id="scheduler">
-                        {% for scheduler in schedulers %}
-                        <option value="{{ scheduler }}" {% if scheduler == 'sgm_uniform' %}selected{% endif %}>{{ scheduler }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-            </div>
-            
-            <div class="row">
-                <div class="form-group">
-                    <label for="steps">Steps (4-8 recommended)</label>
-                    <input type="number" id="steps" value="4" min="1" max="50">
-                </div>
-                <div class="form-group">
-                    <label for="guidance">Guidance (2.5-5.0)</label>
-                    <input type="number" id="guidance" value="3.5" min="1" max="10" step="0.1">
+            <!-- 右侧栏 -->
+            <div class="right-column">
+                <!-- PC端生成按钮（在图片上方） -->
+                <button class="btn-generate desktop-generate-btn" id="btn_generate_desktop" onclick="generateImage()">
+                    🚀 Generate Image
+                </button>
+                
+                <div class="card">
+                    <div class="section-title">Generated Image</div>
+                    <div class="image-container" id="image_container">
+                        <div class="image-placeholder">
+                            <p>点击 "Generate Image" 按钮生成图片</p>
+                        </div>
+                    </div>
+                    <div class="loading" id="loading">
+                        <div class="spinner"></div>
+                        <p>正在生成图片，请稍候...</p>
+                        <div class="status" id="status"></div>
+                    </div>
+                    <div class="error" id="error"></div>
+                    <div class="image-info" id="image_info">
+                        <span id="image_details"></span>
+                        <a href="#" class="download-link" id="download_link" download>下载图片</a>
+                    </div>
                 </div>
             </div>
         </div>
-        
-        <div class="card">
-            <div class="section-title">Output Settings</div>
-            <div class="row">
-                <div class="form-group">
-                    <label for="width">Width</label>
-                    <input type="number" id="width" value="512" min="256" max="2048" step="64">
-                </div>
-                <div class="form-group">
-                    <label for="height">Height</label>
-                    <input type="number" id="height" value="512" min="256" max="2048" step="64">
-                </div>
-            </div>
-            <div class="form-group">
-                <label for="output_prefix">Output Prefix</label>
-                <input type="text" id="output_prefix" value="webui" placeholder="输出文件名前缀">
-            </div>
-        </div>
-        
-        <div class="card">
-            <div class="section-title">Generated Image</div>
-            <div class="image-container" id="image_container">
-                <div class="image-placeholder">
-                    <p>点击 "Generate Image" 按钮生成图片</p>
-                </div>
-            </div>
-            <div class="loading" id="loading">
-                <div class="spinner"></div>
-                <p>正在生成图片，请稍候...</p>
-                <div class="status" id="status"></div>
-            </div>
-            <div class="error" id="error"></div>
-            <div class="image-info" id="image_info">
-                <span id="image_details"></span>
-                <a href="#" class="download-link" id="download_link" download>下载图片</a>
-            </div>
-        </div>
-        
-        <button class="btn-generate" id="btn_generate" onclick="generateImage()">
-            🚀 Generate Image
-        </button>
     </div>
     
     <script>
         async function generateImage() {
-            const btn = document.getElementById('btn_generate');
+            const btnDesktop = document.getElementById('btn_generate_desktop');
+            const btnMobile = document.getElementById('btn_generate_mobile');
             const loading = document.getElementById('loading');
             const error = document.getElementById('error');
             const imageContainer = document.getElementById('image_container');
@@ -359,7 +437,8 @@
             }
             
             // 禁用按钮，显示加载
-            btn.disabled = true;
+            if (btnDesktop) btnDesktop.disabled = true;
+            if (btnMobile) btnMobile.disabled = true;
             loading.classList.add('active');
             error.classList.remove('active');
             imageInfo.classList.remove('active');
@@ -411,7 +490,8 @@
                     </div>
                 `;
             } finally {
-                btn.disabled = false;
+                if (btnDesktop) btnDesktop.disabled = false;
+                if (btnMobile) btnMobile.disabled = false;
                 loading.classList.remove('active');
             }
         }

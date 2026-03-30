@@ -142,10 +142,8 @@ async def generate_image(
                    (current_task_info.get("prompt", "")[:30] + "..." if current_task_info.get("prompt") else "未知")
         )
     
-    # 生成唯一的输出文件名
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    unique_id = str(uuid.uuid4())[:8]
-    output_name = f"{output_prefix}_{timestamp}_{unique_id}"
+    # 使用前缀作为输出名称（run_z_image.sh 会处理自动递增编号）
+    output_name = output_prefix
     
     # 构建命令
     script_path = PROJECT_ROOT / "run_z_image.sh"
