@@ -27,14 +27,17 @@ wheels/
 *.egg
 
 # 模型文件 (大文件，需要单独下载)
-models/*.gguf
-models/*.safetensors
-models/*.sft
-models/*.pt
-models/*.pth
-models/*.ckpt
-models/*.bin
-!models/.gitkeep
+# 所有模型子目录中的大文件
+models/*/*.gguf
+models/*/*.safetensors
+models/*/*.sft
+models/*/*.pt
+models/*/*.pth
+models/*/*.ckpt
+models/*/*.bin
+
+# 保留目录结构（需要手动创建 .gitkeep）
+!models/*/.gitkeep
 
 # 输出目录
 output/

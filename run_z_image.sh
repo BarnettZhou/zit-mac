@@ -11,10 +11,15 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-# 模型路径
-DIT_MODEL="${SCRIPT_DIR}/models/z-image-turbo-Q8_0.gguf"
-TE_MODEL="${SCRIPT_DIR}/models/Qwen3-4B-Q4_K_M.gguf"
-VAE_MODEL="${SCRIPT_DIR}/models/ae.safetensors"
+# 模型目录
+DIT_DIR="${SCRIPT_DIR}/models/diffusion_models"
+TE_DIR="${SCRIPT_DIR}/models/text_encoder"
+VAE_DIR="${SCRIPT_DIR}/models/vae"
+
+# 自动检测模型文件（使用目录下第一个匹配的文件）
+DIT_MODEL=$(ls -1 "${DIT_DIR}"/*.gguf 2>/dev/null | head -n1)
+TE_MODEL=$(ls -1 "${TE_DIR}"/*.gguf 2>/dev/null | head -n1)
+VAE_MODEL=$(ls -1 "${VAE_DIR}"/*.safetensors "${VAE_DIR}"/*.sft 2>/dev/null | head -n1)
 
 # stable-diffusion.cpp 可执行文件路径
 SD_CLI="${SCRIPT_DIR}/stable-diffusion.cpp/build/bin/sd-cli"
@@ -212,9 +217,40 @@ echo "Z-Image Turbo 文生图"
 echo "======================================"
 echo ""
 
-check_model "$DIT_MODEL" "DiT 模型 (z-image-turbo-Q8_0.gguf)"
-check_model "$TE_MODEL" "文本编码器 (Qwen3-4B-Q4_K_M.gguf)"
-check_model "$VAE_MODEL" "VAE (ae.safetensors)"
+# 检查模型目录是否存在
+if [[ ! -d "${SCRIPT_DIR}/models/diffusion_models" ]]; then
+    echo "错误: 找不到 diffusion_models 目录"
+    echo "请将 DiT 模型放到: models/diffusion_models/"
+    exit 1
+fi
+if [[ ! -d "${SCRIPT_DIR}/models/text_encoder" ]]; then
+    echo "错误: 找不到 text_encoder 目录"
+    echo "请将文本编码器放到: models/text_encoder/"
+    exit 1
+fi
+if [[ ! -d "${SCRIPT_DIR}/models/vae" ]]; then
+    echo "错误: 找不到 vae 目录"
+    echo "请将 VAE 模型放到: models/vae/"
+    exit 1
+fi
+
+# 检查模型文件是否找到
+if [[ -z "$DIT_MODEL" ]]; then
+    echo "错误: 在 ${DIT_DIR} 中找不到 GGUF 模型文件"
+    exit 1
+fi
+if [[ -z "$TE_MODEL" ]]; then
+    echo "错误: 在 ${TE_DIR} 中找不到文本编码器 GGUF 文件"
+    exit 1
+fi
+if [[ -z "$VAE_MODEL" ]]; then
+    echo "错误: 在 ${VAE_DIR} 中找不到 VAE 文件 (.safetensors 或 .sft)"
+    exit 1
+fi
+
+check_model "$DIT_MODEL" "DiT 模型"
+check_model "$TE_MODEL" "文本编码器"
+check_model "$VAE_MODEL" "VAE"
 
 # 检查可执行文件
 if [[ ! -f "$SD_CLI" ]]; then

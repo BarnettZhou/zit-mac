@@ -6,21 +6,26 @@
 
 ```
 .
-├── models/                          # 模型文件目录
-│   ├── z-image-turbo-Q8_0.gguf     # DiT 扩散模型 (已下载)
-│   ├── Qwen3-4B-Q4_K_M.gguf        # 文本编码器 (需下载)
-│   ├── ae.safetensors              # VAE 解码器 (需下载)
-│   └── flux-ae.sft                 # 备选 VAE (可选)
-├── output/                          # 输出目录 (自动生成)
-│   └── 2026-03-29/                 # 按日期组织的子目录
+├── models/                               # 模型文件目录
+│   ├── diffusion_models/                # DiT 扩散模型目录
+│   │   └── z-image-turbo-Q8_0.gguf     # 主模型 (需下载)
+│   ├── text_encoder/                    # 文本编码器目录
+│   │   └── Qwen3-4B-Q4_K_M.gguf        # Qwen 编码器 (需下载)
+│   └── vae/                             # VAE 解码器目录
+│       └── ae.safetensors              # VAE 模型 (需下载)
+├── output/                              # 输出目录 (自动生成)
+│   └── 2026-03-29/                      # 按日期组织的子目录
 │       ├── cat_0001.png
 │       └── portrait_0001.png
-├── stable-diffusion.cpp/           # stable-diffusion.cpp 源码 (需自行下载编译)
-
-├── run_z_image.sh                  # 主要运行脚本 (Bash)
-├── generate.py                     # Python 接口
-├── pyproject.toml                  # uv 项目配置
-└── README.md                       # 本文件
+├── server/                              # Web UI 服务端
+│   ├── main.py                          # FastAPI 应用
+│   └── templates/                       # HTML 模板
+│       └── index.html                   # Web UI 页面
+├── stable-diffusion.cpp/                # stable-diffusion.cpp 源码 (需自行下载编译)
+├── run_z_image.sh                       # 主要运行脚本 (Bash)
+├── generate.py                          # Python 接口
+├── pyproject.toml                       # uv 项目配置
+└── README.md                            # 本文件
 ```
 
 ## 环境要求
@@ -28,20 +33,50 @@
 - macOS (Apple Silicon)
 - [uv](https://docs.astral.sh/uv/) - Python 包管理器
 - Xcode Command Line Tools
+- CMake 3.16+
 
 ## 快速开始
 
 ### 1. 环境准备
 
-项目已配置好虚拟环境和依赖，直接运行即可：
+#### 1.1 安装 Xcode Command Line Tools
 
 ```bash
-# 查看虚拟环境状态
-source .venv/bin/activate
-
-# 如需重新安装依赖
-uv pip install -e .
+xcode-select --install
 ```
+
+> 如果你已经完整安装了 Xcode，则无需额外安装 Command Line Tools。
+
+#### 1.2 安装 CMake
+
+**方式1：通过 Homebrew（推荐）**
+```bash
+brew install cmake
+```
+
+**方式2：通过官网下载**
+从 https://cmake.org/download/ 下载 macOS 安装包，或使用：
+```bash
+sudo /Applications/CMake.app/Contents/bin/cmake-gui --install
+```
+
+#### 1.3 安装 uv（如未安装）
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+#### 1.4 激活 Python 环境
+
+```bash
+# 同步依赖（如 pyproject.toml 有变更）
+uv sync
+
+# 激活虚拟环境
+source .venv/bin/activate
+```
+
+> **注意**：本项目仅依赖 Python 标准库，无需安装 PyTorch 等重型库。
 
 ### 2. 下载编译 stable-diffusion.cpp
 
@@ -60,9 +95,28 @@ cmake --build build -j8
 
 ### 3. 下载依赖模型
 
-手动下载以下模型文件到 `models/` 目录：
-- **文本编码器**: [Qwen3-4B-GGUF](https://huggingface.co/unsloth/Qwen3-4B-GGUF) (推荐 Q4_K_M)
-- **VAE**: [ae.safetensors](https://huggingface.co/Comfy-Org/z_image_turbo/tree/main/split_files/vae)
+手动下载以下模型文件到对应目录：
+
+| 模型类型 | 目标目录 | 推荐文件 | 下载地址 |
+|----------|----------|----------|----------|
+| **DiT 模型** | `models/diffusion_models/` | `z-image-turbo-Q8_0.gguf` | [Z-Image-Turbo-GGUF](https://huggingface.co/unsloth/Z-Image-Turbo-GGUF) |
+| **文本编码器** | `models/text_encoder/` | `Qwen3-4B-Q4_K_M.gguf` | [Qwen3-4B-GGUF](https://huggingface.co/unsloth/Qwen3-4B-GGUF) |
+| **VAE** | `models/vae/` | `ae.safetensors` | [ComfyUI Z-Image VAE](https://huggingface.co/Comfy-Org/z_image_turbo/tree/main/split_files/vae) |
+
+创建目录并移动模型文件：
+
+```bash
+# 创建模型目录
+mkdir -p models/diffusion_models models/text_encoder models/vae
+
+# 移动模型到对应目录（根据实际下载的文件名调整）
+mv z-image-turbo-Q8_0.gguf models/diffusion_models/
+mv Qwen3-4B-Q4_K_M.gguf models/text_encoder/
+mv ae.safetensors models/vae/
+
+# 验证目录结构
+ls -R models/
+```
 
 ### 4. 生成图像
 
@@ -124,6 +178,46 @@ python generate.py \
     --scheduler sgm_uniform \
     -W 1024 -H 1024 \
     -s 8
+```
+
+### 5. Web UI 界面
+
+项目提供基于 FastAPI 的 Web 界面，支持可视化配置和生成图片。
+
+#### 启动 Web 服务
+
+```bash
+# 方式1：使用 uv
+uv run python server/main.py
+
+# 方式2：使用 python
+source .venv/bin/activate
+python server/main.py
+```
+
+服务启动后，打开浏览器访问：**http://localhost:11451**
+
+#### Web UI 功能
+
+- 🎨 **可视化配置**：支持选择 Diffusion 模型、采样方法、调度器等
+- 🖼️ **实时预览**：生成完成后直接在网页展示图片
+- ⬇️ **一键下载**：生成的图片可直接下载保存
+- 📱 **响应式设计**：支持桌面和移动端访问
+
+#### API 接口
+
+Web 服务同时提供 RESTful API：
+
+```bash
+# 获取可用模型列表
+curl http://localhost:11451/api/models
+
+# 生成图片
+curl -X POST http://localhost:11451/api/generate \
+  -F "prompt=a beautiful sunset" \
+  -F "width=512" \
+  -F "height=512" \
+  -F "steps=4"
 ```
 
 ## 参数说明
@@ -201,9 +295,16 @@ Z-Image Turbo 使用特定的采样配置：
 ### 模型文件缺失
 
 ```bash
-# 确认模型文件存在
-ls models/
+# 确认模型目录结构正确
+ls -R models/
+
+# 预期输出:
+# models/diffusion_models/z-image-turbo-*.gguf
+# models/text_encoder/Qwen3-4B-*.gguf
+# models/vae/ae.safetensors
 ```
+
+如果提示找不到模型目录，请按"下载依赖模型"部分的说明创建目录并移动文件。
 
 ### 编译错误
 
