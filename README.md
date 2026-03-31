@@ -17,16 +17,28 @@
 │   └── 2026-03-29/                      # 按日期组织的子目录
 │       ├── cat_0001.png
 │       └── portrait_0001.png
-├── server/                              # Web UI 服务端
-│   ├── main.py                          # FastAPI 应用
-│   └── templates/                       # HTML 模板
-│       └── index.html                   # Web UI 页面
+├── server/                              # Web UI 服务端 (命令行方式)
+├── server-capi/                         # Web UI 服务端 (C API 方式，推荐)
 ├── stable-diffusion.cpp/                # stable-diffusion.cpp 源码 (需自行下载编译)
 ├── run_z_image.sh                       # 主要运行脚本 (Bash)
 ├── generate.py                          # Python 接口
 ├── pyproject.toml                       # uv 项目配置
 └── README.md                            # 本文件
 ```
+
+## 使用方式
+
+本项目提供三种使用方式：
+
+| 方式 | 目录/文件 | 适用场景 | 说明 |
+|------|----------|----------|------|
+| **命令行** | `run_z_image.sh` | 快速生成 | 直接在终端使用 |
+| **Web UI (C API)** | [`server-capi/`](./server-capi/) | 频繁使用 ⭐推荐 | 模型常驻内存，响应快 |
+| **Web UI (Legacy)** | [`server/`](./server/) | 偶尔使用 | 每次请求重新加载模型 |
+
+详细说明请查看对应目录的 README：
+- [server-capi/README.md](./server-capi/) - C API 方式（模型常驻内存）
+- [server/README.md](./server/) - Legacy 方式（每次请求加载模型）
 
 ## 环境要求
 
@@ -120,105 +132,44 @@ ls -R models/
 
 ### 4. 生成图像
 
-#### 基础用法
+#### 命令行方式
 
 ```bash
 # 基础用法 (保存到 output/output_0001.png)
 ./run_z_image.sh -p "a beautiful sunset over mountains"
-```
 
-#### 使用前缀组织输出
-
-```bash
-# 自定义前缀 (output/cat_0001.png)
-./run_z_image.sh -p "cute cat" --prefix "cat"
-
-# 使用子目录 (output/aa/cat_0001.png)
-./run_z_image.sh -p "cute cat" --prefix "aa/cat"
-
-# 使用日期子目录 (output/2026-03-29/cat_0001.png)
+# 使用前缀组织输出
 ./run_z_image.sh -p "cute cat" --prefix "%date%/cat"
-```
 
-#### 调整采样参数
-
-```bash
-# 使用 euler + sgm_uniform 组合 (推荐)
-./run_z_image.sh -p "portrait of a woman" \
+# 完整示例
+./run_z_image.sh \
+    -p "portrait of a woman" \
     --prefix "%date%/portraits/woman" \
     --sampling-method euler \
     --scheduler sgm_uniform \
     -W 1024 -H 1024 \
     -s 8
-
-# 调整 guidance 获得更强提示词对齐
-./run_z_image.sh -p "cyberpunk city at night" \
-    --prefix "%date%/cyberpunk/city" \
-    --guidance 4.5 \
-    -W 1024 -H 1024 \
-    -s 8
 ```
 
-#### Python 接口
+#### Web UI 方式
+
+**推荐：使用 C API 版本（模型常驻内存）**
 
 ```bash
-source .venv/bin/activate
-
-# 基础用法
-python generate.py -p "a beautiful sunset"
-
-# 使用日期子目录
-python generate.py -p "cute cat" --prefix "%date%/cat"
-
-# 完整示例
-python generate.py \
-    -p "landscape with mountains" \
-    --prefix "%date%/landscapes/mountain" \
-    --sampling-method euler \
-    --scheduler sgm_uniform \
-    -W 1024 -H 1024 \
-    -s 8
+python server-capi/start_server.py
+# 访问 http://localhost:11451
 ```
 
-### 5. Web UI 界面
+详见 [server-capi/README.md](./server-capi/)
 
-项目提供基于 FastAPI 的 Web 界面，支持可视化配置和生成图片。
-
-#### 启动 Web 服务
+**Legacy 版本（每次请求重新加载模型）**
 
 ```bash
-# 方式1：使用 uv
-uv run python server/main.py
-
-# 方式2：使用 python
-source .venv/bin/activate
 python server/main.py
+# 访问 http://localhost:11451
 ```
 
-服务启动后，打开浏览器访问：**http://localhost:11451**
-
-#### Web UI 功能
-
-- 🎨 **可视化配置**：支持选择 Diffusion 模型、采样方法、调度器等
-- 🖼️ **实时预览**：生成完成后直接在网页展示图片
-- ⬇️ **一键下载**：生成的图片可直接下载保存
-- 📱 **响应式设计**：支持桌面和移动端访问
-
-#### API 接口
-
-Web 服务同时提供 RESTful API：
-
-```bash
-# 获取可用模型列表
-curl http://localhost:11451/api/models
-
-# 生成图片
-curl -X POST http://localhost:11451/api/generate \
-  -F "prompt=a beautiful sunset" \
-  -F "width=512" \
-  -F "height=512" \
-  -F "steps=4"
-```
+详见 [server/README.md](./server/)
 
 ## 参数说明
 
