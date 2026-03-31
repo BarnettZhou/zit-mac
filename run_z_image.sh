@@ -16,11 +16,6 @@ DIT_DIR="${SCRIPT_DIR}/models/diffusion_models"
 TE_DIR="${SCRIPT_DIR}/models/text_encoder"
 VAE_DIR="${SCRIPT_DIR}/models/vae"
 
-# 自动检测模型文件（使用目录下第一个匹配的文件）
-DIT_MODEL=$(ls -1 "${DIT_DIR}"/*.gguf 2>/dev/null | head -n1)
-TE_MODEL=$(ls -1 "${TE_DIR}"/*.gguf 2>/dev/null | head -n1)
-VAE_MODEL=$(ls -1 "${VAE_DIR}"/*.safetensors "${VAE_DIR}"/*.sft 2>/dev/null | head -n1)
-
 # stable-diffusion.cpp 可执行文件路径
 SD_CLI="${SCRIPT_DIR}/stable-diffusion.cpp/build/bin/sd-cli"
 
@@ -35,6 +30,16 @@ SEED=-1
 SAMPLING_METHOD="res_multistep"
 SCHEDULER=""
 GUIDANCE=3.5
+
+# 模型选择参数（可选，默认自动检测）
+DIT_MODEL_ARG=""
+TE_MODEL_ARG=""
+VAE_MODEL_ARG=""
+
+# 模型路径变量（将在参数解析后设置）
+DIT_MODEL=""
+TE_MODEL=""
+VAE_MODEL=""
 
 # 获取当前日期
 CURRENT_DATE=$(date +%Y-%m-%d)
@@ -178,6 +183,18 @@ while [[ $# -gt 0 ]]; do
             GUIDANCE="$2"
             shift 2
             ;;
+        --diffusion-model)
+            DIT_MODEL_ARG="$2"
+            shift 2
+            ;;
+        --text-encoder)
+            TE_MODEL_ARG="$2"
+            shift 2
+            ;;
+        --vae)
+            VAE_MODEL_ARG="$2"
+            shift 2
+            ;;
         -h|--help)
             show_help
             exit 0
@@ -189,6 +206,26 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
+# 处理模型选择：使用用户指定的或自动检测
+if [[ -n "$DIT_MODEL_ARG" ]]; then
+    DIT_MODEL="${DIT_DIR}/${DIT_MODEL_ARG}"
+else
+    # 自动检测模型文件（使用目录下第一个匹配的文件）
+    DIT_MODEL=$(ls -1 "${DIT_DIR}"/*.gguf 2>/dev/null | head -n1)
+fi
+
+if [[ -n "$TE_MODEL_ARG" ]]; then
+    TE_MODEL="${TE_DIR}/${TE_MODEL_ARG}"
+else
+    TE_MODEL=$(ls -1 "${TE_DIR}"/*.gguf 2>/dev/null | head -n1)
+fi
+
+if [[ -n "$VAE_MODEL_ARG" ]]; then
+    VAE_MODEL="${VAE_DIR}/${VAE_MODEL_ARG}"
+else
+    VAE_MODEL=$(ls -1 "${VAE_DIR}"/*.safetensors "${VAE_DIR}"/*.sft 2>/dev/null | head -n1)
+fi
 
 # 检查必需参数
 if [[ -z "$PROMPT" ]]; then

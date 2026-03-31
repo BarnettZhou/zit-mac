@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Z-Image Turbo Web UI</title>
+    <title>Z-Image Turbo Web UI (C API)</title>
     <style>
         * {
             margin: 0;
@@ -26,13 +26,96 @@
         
         h1 {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 10px;
             color: #fff;
             font-size: 28px;
             text-shadow: 0 2px 4px rgba(0,0,0,0.3);
         }
         
-        /* 主布局 - PC端两栏 */
+        .subtitle {
+            text-align: center;
+            color: #667eea;
+            font-size: 14px;
+            margin-bottom: 30px;
+        }
+        
+        /* 服务器状态栏 */
+        .server-status-bar {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 12px 20px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #666;
+            transition: background 0.3s;
+        }
+        
+        .status-dot.online {
+            background: #4ade80;
+            box-shadow: 0 0 8px #4ade80;
+        }
+        
+        .status-dot.offline {
+            background: #ef4444;
+        }
+        
+        .status-dot.loading {
+            background: #fbbf24;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .status-text {
+            font-size: 14px;
+            color: #a0a0a0;
+        }
+        
+        .server-controls {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: rgba(102, 126, 234, 0.2);
+            color: #667eea;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn-small:hover {
+            background: rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn-small:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        /* 主布局 */
         .main-layout {
             display: grid;
             grid-template-columns: 1fr 450px;
@@ -40,7 +123,6 @@
             align-items: start;
         }
         
-        /* 手机端单列布局 */
         @media (max-width: 900px) {
             .main-layout {
                 grid-template-columns: 1fr;
@@ -254,7 +336,6 @@
             text-decoration: underline;
         }
         
-        /* 右侧栏固定 */
         .right-column {
             position: sticky;
             top: 20px;
@@ -263,12 +344,10 @@
             gap: 16px;
         }
         
-        /* PC端：图片区域显示按钮 */
         .desktop-generate-btn {
             display: block;
         }
         
-        /* 手机端：底部显示按钮 */
         .mobile-generate-btn {
             display: none;
         }
@@ -279,12 +358,10 @@
                 gap: 20px;
             }
             
-            /* 手机端隐藏图片下方的按钮 */
             .desktop-generate-btn {
                 display: none;
             }
             
-            /* 手机端显示底部按钮 */
             .mobile-generate-btn {
                 display: block;
             }
@@ -293,6 +370,20 @@
 </head>
 <body>
     <div class="container">
+        <h1>🎨 Z-Image Turbo Web UI</h1>
+        <div class="subtitle">基于 stable-diffusion.cpp C API - 模型常驻内存</div>
+        
+        <!-- 服务器状态栏 -->
+        <div class="server-status-bar">
+            <div class="status-indicator">
+                <div class="status-dot" id="status_dot"></div>
+                <span class="status-text" id="status_text">检查中...</span>
+            </div>
+            <div class="server-controls">
+                <button class="btn-small" id="btn_refresh_status" onclick="refreshStatus()">刷新状态</button>
+            </div>
+        </div>
+        
         <div class="main-layout">
             <!-- 左侧栏 -->
             <div class="left-column">
@@ -307,7 +398,7 @@
                     <div class="section-title">Model Settings</div>
                     <div class="form-group">
                         <label for="diffusion_model">Diffusion Model</label>
-                        <select id="diffusion_model">
+                        <select id="diffusion_model" onchange="onModelChange()">
                             {% for model in diffusion_models %}
                             <option value="{{ model }}">{{ model }}</option>
                             {% endfor %}
@@ -383,9 +474,12 @@
                         <label for="output_prefix">Output Prefix (支持 %date% 占位符)</label>
                         <input type="text" id="output_prefix" value="%date%/webui" placeholder="输出文件名前缀">
                     </div>
+                    <div class="form-group">
+                        <label for="seed">Seed (-1 for random)</label>
+                        <input type="number" id="seed" value="-1" min="-1">
+                    </div>
                 </div>
                 
-                <!-- 手机端生成按钮 -->
                 <button class="btn-generate mobile-generate-btn" id="btn_generate_mobile" onclick="generateImage()">
                     🚀 Generate Image
                 </button>
@@ -393,7 +487,6 @@
             
             <!-- 右侧栏 -->
             <div class="right-column">
-                <!-- PC端生成按钮（在图片上方） -->
                 <button class="btn-generate desktop-generate-btn" id="btn_generate_desktop" onclick="generateImage()">
                     🚀 Generate Image
                 </button>
@@ -421,6 +514,42 @@
     </div>
     
     <script>
+        let modelChanged = false;
+        
+        function onModelChange() {
+            modelChanged = true;
+        }
+        
+        // 状态刷新
+        async function refreshStatus() {
+            const dot = document.getElementById('status_dot');
+            const text = document.getElementById('status_text');
+            
+            dot.className = 'status-dot loading';
+            text.textContent = '检查中...';
+            
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+                
+                if (data.healthy) {
+                    dot.className = 'status-dot online';
+                    const modelName = data.server.model_name || '未知模型';
+                    text.textContent = `服务运行中 - ${modelName}`;
+                } else {
+                    dot.className = 'status-dot offline';
+                    text.textContent = '服务未运行';
+                }
+            } catch (e) {
+                dot.className = 'status-dot offline';
+                text.textContent = '无法连接后端';
+            }
+        }
+        
+        // 定期刷新状态
+        setInterval(refreshStatus, 5000);
+        refreshStatus();
+        
         async function generateImage() {
             const btnDesktop = document.getElementById('btn_generate_desktop');
             const btnMobile = document.getElementById('btn_generate_mobile');
@@ -429,7 +558,6 @@
             const imageContainer = document.getElementById('image_container');
             const imageInfo = document.getElementById('image_info');
             
-            // 获取表单数据
             const prompt = document.getElementById('prompt').value.trim();
             if (!prompt) {
                 showError('请输入提示词');
@@ -455,6 +583,7 @@
             formData.append('width', document.getElementById('width').value);
             formData.append('height', document.getElementById('height').value);
             formData.append('guidance', document.getElementById('guidance').value);
+            formData.append('seed', document.getElementById('seed').value);
             formData.append('output_prefix', document.getElementById('output_prefix').value);
             
             try {
@@ -482,6 +611,8 @@
                 document.getElementById('download_link').href = data.image_url;
                 imageInfo.classList.add('active');
                 
+                modelChanged = false;
+                
             } catch (err) {
                 showError(err.message);
                 imageContainer.innerHTML = `
@@ -502,7 +633,6 @@
             error.classList.add('active');
         }
         
-        // 回车键触发生成
         document.getElementById('prompt').addEventListener('keydown', function(e) {
             if (e.ctrlKey && e.key === 'Enter') {
                 generateImage();

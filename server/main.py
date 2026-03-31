@@ -17,6 +17,7 @@ from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.middleware.base import BaseHTTPMiddleware
 
 # 项目根目录
 PROJECT_ROOT = Path(__file__).parent.parent.absolute()
@@ -31,11 +32,30 @@ TEXT_ENCODER_DIR = MODELS_DIR / "text_encoder"
 
 app = FastAPI(title="Z-Image Turbo Web UI")
 
+# 禁用缓存中间件 - 防止图片被浏览器缓存
+class NoCacheMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        # 对 output 目录的图片禁用缓存
+        if request.url.path.startswith("/output"):
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
+        return response
+
+app.add_middleware(NoCacheMiddleware)
+
 # 挂载静态文件
 app.mount("/output", StaticFiles(directory=str(OUTPUT_DIR)), name="output")
 
 # 模板
 templates = Jinja2Templates(directory=str(PROJECT_ROOT / "server" / "templates"))
+
+# 任务锁 - 限制同时只有一个生成任务
+generate_lock = asyncio.Lock()
+
+# 当前任务信息
+current_task_info = {}
 
 
 # 采样方法和调度器选项
@@ -55,8 +75,9 @@ def get_available_diffusion_models() -> list[str]:
     """获取可用的扩散模型列表"""
     models = []
     if DIFFUSION_DIR.exists():
-        for f in DIFFUSION_DIR.glob("*.gguf"):
-            models.append(f.name)
+        for ext in ["*.gguf", "*.safetensors"]:
+            for f in DIFFUSION_DIR.glob(ext):
+                models.append(f.name)
     return models if models else ["z-image-turbo-Q8_0.gguf"]
 
 
@@ -158,6 +179,9 @@ async def generate_image(
         "--seed", str(seed),
         "--sampling-method", sampling_method,
         "--guidance", str(guidance),
+        "--diffusion-model", diffusion_model,
+        "--text-encoder", text_encoder,
+        "--vae", vae,
     ]
     
     if scheduler:
@@ -201,21 +225,14 @@ async def generate_image(
                 print(f"[ERROR] 生成失败: {error_msg}")
                 raise HTTPException(status_code=500, detail=f"生成失败: {error_msg}")
             
-            # 查找生成的文件
+            # 查找生成的文件 - 按修改时间找最新的
             output_file = None
             
-            # 尝试不同的编号查找文件
-            for i in range(1, 100):
-                potential_path = OUTPUT_DIR / f"{output_name}_{i:04d}.png"
-                if potential_path.exists():
-                    output_file = potential_path
-                    break
-            
-            if not output_file or not output_file.exists():
-                # 尝试直接在 output 目录查找
-                for f in OUTPUT_DIR.glob(f"{output_name}_*.png"):
-                    output_file = f
-                    break
+            # 获取所有匹配的文件并按修改时间排序（最新的在前）
+            matching_files = list(OUTPUT_DIR.glob(f"{output_name}_*.png"))
+            if matching_files:
+                matching_files.sort(key=lambda x: x.stat().st_mtime, reverse=True)
+                output_file = matching_files[0]
             
             if not output_file or not output_file.exists():
                 print(f"[ERROR] 生成的文件未找到，output_name: {output_name}")
